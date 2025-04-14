@@ -3,8 +3,9 @@ import './App.css';
 import { User } from './types';
 import Form from './components/Form';
 import UsersList from './components/UsersList';
-import { fetchUsers, LogIn } from './services/usersService';
+import { fetchUsers, LogIn, updateUser } from './services/usersService';
 import Login from './components/Login';
+import EditUser from './components/EditUser';
 
 interface AppState {
     currentUser: User | null;
@@ -24,6 +25,7 @@ function App() {
     const [newUsersNumber, setNewUsersNumber] = useState<AppState['newUsersNumber']>(0);
     const [isLoggedIn, setIsLoggedIn] = useState<AppState['isLoggedIn']>(false);
     const [currentUser, setCurrentUser] = useState<AppState['currentUser']>(null);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
 
     const [uiState, setUiState] = useState<UIState>({
         isDarkMode: false,
@@ -95,12 +97,38 @@ function App() {
         }
     };
 
+    const handleEditUser = (user: User) => {
+        setEditingUser(user);
+    };
+
+    const handleUpdateUser = async (updatedUser: User) => {
+        try {
+            const user = await updateUser(updatedUser._id!, updatedUser);
+            setUiState((prev) => ({
+                ...prev,
+                showNotification: true,
+                newUserName: user.name, // Use the updated user's name for the notification
+            }));
+            setEditingUser(null);
+
+            // Reload the user list from the server
+            const fetchedUsers = await fetchUsers();
+            setUsers(fetchedUsers);
+        } catch (error) {
+            console.error('Error updating user:', error);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingUser(null);
+    };
+
     return (
         <div className="App" ref={divRef}>
             {/* Notification Popup */}
             {uiState.showNotification && (
                 <div className={`notification ${uiState.isDarkMode ? 'dark' : 'light'}`}>
-                    User <strong>{uiState.newUserName}</strong> has been created successfully!
+                    User <strong>{uiState.newUserName}</strong> has been updated successfully!
                 </div>
             )}
 
@@ -113,10 +141,16 @@ function App() {
                     <Login
                         onLogin={({ email, password }) => handleLogin(email, password)}
                     />
+                ) : editingUser ? (
+                    <EditUser
+                        user={editingUser}
+                        onUpdate={handleUpdateUser}
+                        onCancel={handleCancelEdit}
+                    />
                 ) : (
                     <>
                         <h2>Bienvenido, {currentUser?.name}!</h2>
-                        <UsersList users={users} />
+                        <UsersList users={users} onEditUser={handleEditUser} />
                         <p>New users: {newUsersNumber}</p>
                         <Form onNewUser={handleNewUser} />
                     </>

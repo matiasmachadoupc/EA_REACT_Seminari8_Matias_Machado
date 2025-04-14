@@ -1,4 +1,5 @@
 export interface User {
+    _id?: string; // Add this line to include the _id property
     name: string;
     age: number;
     email?: string;
